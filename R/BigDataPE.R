@@ -36,23 +36,27 @@ parse_queries <- function(url, query_list) {
 }
 
 
-#' Store a token securely for a specific dataset
+
+#' Store a token in an environment variable for a specific dataset
 #'
-#' This function securely stores an authentication token
-#' for a specific dataset using the `keyring` package. If the
-#' keyring is not accessible (e.g., in a virtual machine or unsupported environment),
-#' it prints a message and does not attempt to store the token.
+#' This function stores an authentication token for a specific dataset
+#' in a system environment variable. The environment variable name is
+#' constructed by converting the dataset name to ASCII (removing accents),
+#' replacing spaces with underscores, and prefixing it with "BigDataPE_".
 #'
-#' @param base_name The name of the dataset.
-#' @param token The authentication token for the dataset.
+#' If a variable with that name already exists (and is non-empty), the function
+#' will stop and notify you to avoid overwriting. Adjust this behavior as needed.
 #'
-#' @return No return value. If the keyring is available, the token is securely stored.
-#'         Otherwise, a message is displayed.
+#' @param base_name The name of the dataset (character).
+#' @param token The authentication token for the dataset (character).
+#'
+#' @return No return value, called for side effects.
 #' @examples
-#' bdpe_store_token("education_dataset", "your-token-here")
+#' bdpe_store_token("educação dataset", "your-token-here")
+#'
 #' @export
 bdpe_store_token <- function(base_name, token) {
-  # Validate inputs
+  # 1. Validate inputs
   if (!is.character(base_name) || !nzchar(base_name)) {
     stop("Dataset name must be a valid string.")
   }
@@ -60,47 +64,62 @@ bdpe_store_token <- function(base_name, token) {
     stop("Token must be a valid string.")
   }
 
-  # Attempt to store the token in the keyring
-  tryCatch(
-    {
-      keyring::key_set_with_value(service = "BigDataPE",
-                                  username = base_name,
-                                  password = token)
-      message("Token successfully stored for dataset: ", base_name)
-    },
-    error = function(e) {
-      # Graceful fallback if keyring is not accessible
-      message("Keyring not accessible. Token could not be securely stored. Ensure the keyring is supported in this environment.")
-    }
-  )
-}
+  # 2. Convert the dataset name to ASCII (removing accents), then replace spaces with underscores
+  base_name_ascii <- iconv(base_name, from = "", to = "ASCII//TRANSLIT")
+  base_name_sanitized <- gsub(" ", "_", base_name_ascii)
 
+  # 3. Construct the environment variable name
+  env_var_name <- paste0("BigDataPE_", base_name_sanitized)
+
+  # 4. Check if the environment variable is already in use
+  if (nzchar(Sys.getenv(env_var_name, unset = ""))) {
+    # Stop to avoid overwriting an existing token; change to warning or message as needed
+    message(
+      "The environment variable '", env_var_name,
+      "' is already defined. Not overwriting to avoid data loss."
+    )
+    return(invisible())
+  }
+
+  # 5. Store the token in the environment variable
+  env_list <- list(token)
+  names(env_list) <- env_var_name
+  do.call(Sys.setenv, env_list)
+
+  message("Token stored in environment variable: ", env_var_name)
+}
 
 #' Retrieve the token associated with a specific dataset
 #'
-#' This function retrieves the authentication token securely
-#' stored for a specific dataset. If the token is not found,
+#' This function retrieves the authentication token stored
+#' in an environment variable for a specific dataset. If the token is not found,
 #' it returns `NULL` and prints a message instead of throwing an error.
 #'
-#' @param base_name The name of the dataset.
+#' @param base_name The name of the dataset (character).
 #'
 #' @return A string containing the authentication token, or `NULL` if the token is not found.
 #' @examples
 #' token <- bdpe_get_token("education_dataset")
+#'
 #' @export
 bdpe_get_token <- function(base_name) {
+  # 1. Validate the base_name
   if (!is.character(base_name) || !nzchar(base_name)) {
     stop("Dataset name must be a valid string.")
   }
 
-  # Attempt to retrieve the token
-  token <- tryCatch(
-    keyring::key_get(service = "BigDataPE", username = base_name),
-    error = function(e) NULL
-  )
+  # 2. Convert the dataset name to ASCII (removing accents), then replace spaces with underscores
+  base_name_ascii <- iconv(base_name, from = "", to = "ASCII//TRANSLIT")
+  base_name_sanitized <- gsub(" ", "_", base_name_ascii)
 
-  # If token is NULL, print a message
-  if (is.null(token)) {
+  # 3. Construct the environment variable name
+  env_var_name <- paste0("BigDataPE_", base_name_sanitized)
+
+  # 4. Retrieve the token from the environment variable
+  token <- Sys.getenv(env_var_name, unset = "")
+
+  # 5. If the token is empty, return NULL with a message
+  if (token == "") {
     message("No token found for dataset: ", base_name)
     return(NULL)
   }
@@ -110,59 +129,76 @@ bdpe_get_token <- function(base_name) {
 
 #' Remove the token associated with a specific dataset
 #'
-#' This function removes the securely stored authentication
-#' token for a specific dataset. If the token is not found,
+#' This function removes the authentication token stored
+#' in an environment variable for a specific dataset. If the token is not found,
 #' it prints a message and does not throw an error.
 #'
-#' @param base_name The name of the dataset.
+#' @param base_name The name of the dataset (character).
 #'
 #' @return No return value. If the token is found, it is removed. If not, a message is displayed.
 #' @examples
 #' bdpe_remove_token("education_dataset")
+#'
 #' @export
 bdpe_remove_token <- function(base_name) {
+  # 1. Validate the base_name
   if (!is.character(base_name) || !nzchar(base_name)) {
     stop("Dataset name must be a valid string.")
   }
 
-  # Attempt to remove the token
-  tryCatch(
-    {
-      keyring::key_delete(service = "BigDataPE", username = base_name)
-      message("Token successfully removed for dataset: ", base_name)
-    },
-    error = function(e) {
-      message("No token found for dataset: ", base_name)
-    }
-  )
+  # 2. Convert the dataset name to ASCII (removing accents), then replace spaces with underscores
+  base_name_ascii <- iconv(base_name, from = "", to = "ASCII//TRANSLIT")
+  base_name_sanitized <- gsub(" ", "_", base_name_ascii)
+
+  # 3. Construct the environment variable name
+  env_var_name <- paste0("BigDataPE_", base_name_sanitized)
+
+  # 4. Check if the variable exists (non-empty)
+  if (nzchar(Sys.getenv(env_var_name, unset = ""))) {
+    # If it exists, unset (remove) the variable
+    Sys.unsetenv(env_var_name)
+    message("Token successfully removed for dataset: ", base_name)
+  } else {
+    message("No token found for dataset: ", base_name)
+  }
 }
 
-#' List all datasets with stored tokens
+
+
+#' List all datasets that have stored tokens in environment variables
 #'
-#' This function returns a list of datasets that have stored tokens in the keyring.
-#' If the keyring cannot be accessed (e.g., in a virtual machine or unsupported environment),
-#' it returns an empty vector and prints a message.
+#' This function returns a character vector of dataset names
+#' that have their tokens stored in environment variables.
+#' Specifically, it looks for variables that begin with the prefix
+#' `"BigDataPE_"`.
 #'
-#' @return A character vector of dataset names with stored tokens. If the keyring cannot be accessed,
-#' an empty vector is returned with a message.
+#' @return A character vector of dataset names with stored tokens.
+#'         If no tokens are found, an empty vector is returned and
+#'         a message is printed.
+#'
 #' @examples
 #' bdpe_list_tokens()
+#'
 #' @export
 bdpe_list_tokens <- function() {
-  tryCatch(
-    {
-      # Attempt to list keyring entries
-      entries <- keyring::key_list(service = "BigDataPE")
-      return(entries$username)
-    },
-    error = function(e) {
-      # Graceful fallback if keyring cannot be accessed
-      message("Keyring not accessible. Ensure the keyring is configured or supported in this environment.")
-      return(character(0))
-    }
-  )
-}
+  # 1. Retrieve all environment variables
+  all_envs <- Sys.getenv()
 
+  # 2. Filter for those that start with 'BigDataPE_'
+  stored_tokens <- grep("^BigDataPE_", names(all_envs), value = TRUE)
+
+  # 3. If no tokens found, return empty vector with a message
+  if (length(stored_tokens) == 0) {
+    message("No tokens found in environment variables.")
+    return(character(0))
+  }
+
+  # 4. Remove prefix from variable names to extract the "sanitized" dataset name
+  dataset_names <- sub("^BigDataPE_", "", stored_tokens)
+
+  # 5. Return the dataset names
+  return(dataset_names)
+}
 
 
 #' Fetch data from the BigDataPE API
@@ -303,6 +339,10 @@ bdpe_fetch_chunks <- function(
       verbosity = verbosity,
       endpoint = endpoint
     )
+    nms <- names(chunk)
+
+    if ("Mensagem" %in% nms)
+      chunk <- dplyr::select(chunk, -"Mensagem")
 
     # Stop if the API returns no data
     if (nrow(chunk) == 0) break

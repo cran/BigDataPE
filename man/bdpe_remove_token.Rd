@@ -7,16 +7,17 @@
 bdpe_remove_token(base_name)
 }
 \arguments{
-\item{base_name}{The name of the dataset.}
+\item{base_name}{The name of the dataset (character).}
 }
 \value{
 No return value. If the token is found, it is removed. If not, a message is displayed.
 }
 \description{
-This function removes the securely stored authentication
-token for a specific dataset. If the token is not found,
+This function removes the authentication token stored
+in an environment variable for a specific dataset. If the token is not found,
 it prints a message and does not throw an error.
 }
 \examples{
 bdpe_remove_token("education_dataset")
+
 }

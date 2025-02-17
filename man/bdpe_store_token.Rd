@@ -2,25 +2,29 @@
 % Please edit documentation in R/BigDataPE.R
 \name{bdpe_store_token}
 \alias{bdpe_store_token}
-\title{Store a token securely for a specific dataset}
+\title{Store a token in an environment variable for a specific dataset}
 \usage{
 bdpe_store_token(base_name, token)
 }
 \arguments{
-\item{base_name}{The name of the dataset.}
+\item{base_name}{The name of the dataset (character).}
 
-\item{token}{The authentication token for the dataset.}
+\item{token}{The authentication token for the dataset (character).}
 }
 \value{
-No return value. If the keyring is available, the token is securely stored.
-Otherwise, a message is displayed.
+No return value, called for side effects.
 }
 \description{
-This function securely stores an authentication token
-for a specific dataset using the \code{keyring} package. If the
-keyring is not accessible (e.g., in a virtual machine or unsupported environment),
-it prints a message and does not attempt to store the token.
+This function stores an authentication token for a specific dataset
+in a system environment variable. The environment variable name is
+constructed by converting the dataset name to ASCII (removing accents),
+replacing spaces with underscores, and prefixing it with "BigDataPE_".
+}
+\details{
+If a variable with that name already exists (and is non-empty), the function
+will stop and notify you to avoid overwriting. Adjust this behavior as needed.
 }
 \examples{
-bdpe_store_token("education_dataset", "your-token-here")
+bdpe_store_token("educação dataset", "your-token-here")
+
 }

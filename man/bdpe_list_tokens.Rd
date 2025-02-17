@@ -2,19 +2,22 @@
 % Please edit documentation in R/BigDataPE.R
 \name{bdpe_list_tokens}
 \alias{bdpe_list_tokens}
-\title{List all datasets with stored tokens}
+\title{List all datasets that have stored tokens in environment variables}
 \usage{
 bdpe_list_tokens()
 }
 \value{
-A character vector of dataset names with stored tokens. If the keyring cannot be accessed,
-an empty vector is returned with a message.
+A character vector of dataset names with stored tokens.
+If no tokens are found, an empty vector is returned and
+a message is printed.
 }
 \description{
-This function returns a list of datasets that have stored tokens in the keyring.
-If the keyring cannot be accessed (e.g., in a virtual machine or unsupported environment),
-it returns an empty vector and prints a message.
+This function returns a character vector of dataset names
+that have their tokens stored in environment variables.
+Specifically, it looks for variables that begin with the prefix
+\code{"BigDataPE_"}.
 }
 \examples{
 bdpe_list_tokens()
+
 }
