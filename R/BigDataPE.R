@@ -223,24 +223,24 @@ bdpe_list_tokens <- function() {
 #' @examples
 #' \dontrun{
 #' # Store a token for the dataset
-#' bdpe_store_token("education_dataset", "your-token-here")
+#' bdpe_store_token("dengue_dataset", "token")
 #'
 #' # Fetch 50 records from the beginning
-#' data <- bdpe_fetch_data("education_dataset", limit = 50)
+#' data <- bdpe_fetch_data("dengue_dataset", limit = 50)
 #'
 #' # Fetch records with additional query parameters
-#' data <- bdpe_fetch_data("education_dataset", query = list(field = "value"))
+#' data <- bdpe_fetch_data("dengue_dataset", query = list(field = "value"))
 #'
 #' # Fetch all data without limits
-#' data <- bdpe_fetch_data("education_dataset", limit = Inf)
+#' data <- bdpe_fetch_data("dengue_dataset", limit = Inf)
 #' }
 #' @export
 bdpe_fetch_data <- function(
     base_name,
     limit = Inf,
-    offset = 0,
+    offset = 0L,
     query = list(),
-    verbosity = 0,
+    verbosity = 0L,
     endpoint = "https://www.bigdata.pe.gov.br/api/buscar") {
 
   # Retrieve the token for the specified dataset
@@ -248,8 +248,8 @@ bdpe_fetch_data <- function(
 
   # Input validation
   stopifnot(is.list(query))
-  stopifnot(is.numeric(offset))
-  stopifnot(is.numeric(limit) || is.infinite(limit))
+  stopifnot(is.integer(offset))
+  stopifnot(is.integer(limit) || is.infinite(limit))
 
   # Adjust limit and offset for the request
   if (is.infinite(limit) || limit <= 0) limit <- ""
@@ -295,37 +295,39 @@ bdpe_fetch_data <- function(
 #' @examples
 #' \dontrun{
 #' # Store a token for the dataset
-#' bdpe_store_token("education_dataset", "your-token-here")
+#' bdpe_store_token("dengue_dataset", "token")
 #'
 #' # Fetch up to 500 records in chunks of 100
-#' data <- bdpe_fetch_chunks("education_dataset", total_limit = 500, chunk_size = 100)
+#' data <- bdpe_fetch_chunks("dengue_dataset", total_limit = 500, chunk_size = 100)
 #'
 #' # Fetch all available data in chunks of 200
-#' data <- bdpe_fetch_chunks("education_dataset", chunk_size = 200)
+#' data <- bdpe_fetch_chunks("dengue_dataset", chunk_size = 200)
 #' }
 #' @export
 bdpe_fetch_chunks <- function(
     base_name,
     total_limit = Inf,
-    chunk_size = 50000,
+    chunk_size = 500000L,
     query = list(),
-    verbosity = 0,
+    verbosity = 0L,
     endpoint = "https://www.bigdata.pe.gov.br/api/buscar") {
 
   # Input validation
-  stopifnot(is.numeric(total_limit) || is.infinite(total_limit))
-  stopifnot(is.numeric(chunk_size) && chunk_size > 0)
+  stopifnot(is.integer(total_limit) || is.infinite(total_limit))
+  stopifnot(is.integer(chunk_size) && chunk_size > 0)
   stopifnot(is.list(query))
 
   # Initialize variables
-  offset <- 0
-  total_fetched <- 0
+  offset <- 0L
+  total_fetched <- 0L
   all_data <- list()
 
   # Fetch data in chunks
   repeat {
     # Calculate the limit for the current chunk
-    current_limit <- min(chunk_size, total_limit - total_fetched)
+    current_limit <- as.integer(min(chunk_size, total_limit - total_fetched))
+
+    #if(verbosity > 0) message("Current limit: ", current_limit)
 
     # Break if no more records are needed
     if (current_limit <= 0) break
@@ -341,18 +343,21 @@ bdpe_fetch_chunks <- function(
     )
     nms <- names(chunk)
 
+    #if(verbosity > 0)
+    #  chunk |> glimpse()
+
     if ("Mensagem" %in% nms)
       chunk <- dplyr::select(chunk, -"Mensagem")
 
     # Stop if the API returns no data
-    if (nrow(chunk) == 0) break
+    if (nrow(chunk) == 0L) break
 
     # Append the chunk to the results
     all_data <- append(all_data, list(chunk))
-    total_fetched <- total_fetched + nrow(chunk)
+    total_fetched <- as.integer(total_fetched) + nrow(chunk)
 
     # Update the offset for the next chunk
-    offset <- offset + nrow(chunk)
+    offset <- as.integer(offset) + nrow(chunk)
 
     # Break if the total limit is reached
     if (total_fetched >= total_limit) break

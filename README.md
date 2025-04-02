@@ -8,7 +8,7 @@
 ![CRAN_Status_Badge](https://www.r-pkg.org/badges/version/BigDataPE) 
 ![CRAN Downloads](https://cranlogs.r-pkg.org/badges/grand-total/BigDataPE) 
 ![License](https://img.shields.io/badge/license-MIT-darkviolet.svg) 
-![](https://img.shields.io/badge/devel%20version-0.0.95-orangered.svg)
+![](https://img.shields.io/badge/devel%20version-0.0.96-orangered.svg)
 
 <!-- badges: end -->
 

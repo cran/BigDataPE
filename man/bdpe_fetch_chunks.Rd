@@ -7,9 +7,9 @@
 bdpe_fetch_chunks(
   base_name,
   total_limit = Inf,
-  chunk_size = 50000,
+  chunk_size = 500000L,
   query = list(),
-  verbosity = 0,
+  verbosity = 0L,
   endpoint = "https://www.bigdata.pe.gov.br/api/buscar"
 )
 }
@@ -41,12 +41,12 @@ total number of records to fetch and the size of each chunk.
 \examples{
 \dontrun{
 # Store a token for the dataset
-bdpe_store_token("education_dataset", "your-token-here")
+bdpe_store_token("dengue_dataset", "token")
 
 # Fetch up to 500 records in chunks of 100
-data <- bdpe_fetch_chunks("education_dataset", total_limit = 500, chunk_size = 100)
+data <- bdpe_fetch_chunks("dengue_dataset", total_limit = 500, chunk_size = 100)
 
 # Fetch all available data in chunks of 200
-data <- bdpe_fetch_chunks("education_dataset", chunk_size = 200)
+data <- bdpe_fetch_chunks("dengue_dataset", chunk_size = 200)
 }
 }

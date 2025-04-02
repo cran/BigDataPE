@@ -7,9 +7,9 @@
 bdpe_fetch_data(
   base_name,
   limit = Inf,
-  offset = 0,
+  offset = 0L,
   query = list(),
-  verbosity = 0,
+  verbosity = 0L,
   endpoint = "https://www.bigdata.pe.gov.br/api/buscar"
 )
 }
@@ -42,15 +42,15 @@ Users can specify pagination parameters (\code{limit} and \code{offset}) and add
 \examples{
 \dontrun{
 # Store a token for the dataset
-bdpe_store_token("education_dataset", "your-token-here")
+bdpe_store_token("dengue_dataset", "token")
 
 # Fetch 50 records from the beginning
-data <- bdpe_fetch_data("education_dataset", limit = 50)
+data <- bdpe_fetch_data("dengue_dataset", limit = 50)
 
 # Fetch records with additional query parameters
-data <- bdpe_fetch_data("education_dataset", query = list(field = "value"))
+data <- bdpe_fetch_data("dengue_dataset", query = list(field = "value"))
 
 # Fetch all data without limits
-data <- bdpe_fetch_data("education_dataset", limit = Inf)
+data <- bdpe_fetch_data("dengue_dataset", limit = Inf)
 }
 }
