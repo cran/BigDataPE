@@ -24,11 +24,11 @@ If set to a non-positive value or \code{Inf}, no offset will be applied.}
 
 \item{query}{A named list of additional query parameters to filter the API results. Default is an empty list.}
 
-\item{verbosity}{An integer specifying the verbosity level for the API requests.
+\item{verbosity}{An integer specifying the verbosity level.
 Values are:
-- \code{0}: No verbosity (default).
-- \code{1}: Minimal verbosity, showing request status.
-- \code{2}: Detailed verbosity, including request and response details.}
+- \code{0}: No output (default).
+- \code{1}: Show progress messages (records fetched, totals).
+- \code{2}: Show progress messages \strong{and} full HTTP request/response details.}
 
 \item{endpoint}{A string specifying the API endpoint URL. Default is "https://www.bigdata.pe.gov.br/api/buscar".}
 }

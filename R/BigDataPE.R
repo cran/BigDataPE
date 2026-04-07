@@ -1,3 +1,19 @@
+# Safe coercion to integer -------------------------------------------------
+# Tries to convert a scalar value to integer. If conversion is not possible
+# (e.g. character, logical, NA, or a numeric with fractional part) an
+# informative error is raised via cli.
+# Values that are already integer or Inf pass through unchanged.
+.safe_as_integer <- function(x, arg_name) {
+  if (is.infinite(x)) return(x)
+  if (is.integer(x)) return(x)
+  if (is.numeric(x) && length(x) == 1L && !is.na(x) && x == trunc(x)) {
+    return(as.integer(x))
+  }
+  cli::cli_abort(
+    "{.arg {arg_name}} must be a whole number or {.val Inf}, not {.cls {class(x)}} ({.val {x}})."
+  )
+}
+
 #' Constructs a URL with query parameters
 #'
 #' This function appends a list of query parameters to a base URL.
@@ -52,16 +68,16 @@ parse_queries <- function(url, query_list) {
 #'
 #' @return No return value, called for side effects.
 #' @examples
-#' bdpe_store_token("educação dataset", "your-token-here")
+#' bdpe_store_token("education_dataset", "your-token-here")
 #'
 #' @export
 bdpe_store_token <- function(base_name, token) {
   # 1. Validate inputs
   if (!is.character(base_name) || !nzchar(base_name)) {
-    stop("Dataset name must be a valid string.")
+    cli::cli_abort("Dataset name must be a valid string.")
   }
   if (!is.character(token) || !nzchar(token)) {
-    stop("Token must be a valid string.")
+    cli::cli_abort("Token must be a valid string.")
   }
 
   # 2. Convert the dataset name to ASCII (removing accents), then replace spaces with underscores
@@ -73,10 +89,8 @@ bdpe_store_token <- function(base_name, token) {
 
   # 4. Check if the environment variable is already in use
   if (nzchar(Sys.getenv(env_var_name, unset = ""))) {
-    # Stop to avoid overwriting an existing token; change to warning or message as needed
-    message(
-      "The environment variable '", env_var_name,
-      "' is already defined. Not overwriting to avoid data loss."
+    cli::cli_alert_warning(
+      "The environment variable {.envvar {env_var_name}} is already defined. Not overwriting to avoid data loss."
     )
     return(invisible())
   }
@@ -86,7 +100,7 @@ bdpe_store_token <- function(base_name, token) {
   names(env_list) <- env_var_name
   do.call(Sys.setenv, env_list)
 
-  message("Token stored in environment variable: ", env_var_name)
+  cli::cli_alert_success("Token stored in environment variable: {.envvar {env_var_name}}")
 }
 
 #' Retrieve the token associated with a specific dataset
@@ -105,7 +119,7 @@ bdpe_store_token <- function(base_name, token) {
 bdpe_get_token <- function(base_name) {
   # 1. Validate the base_name
   if (!is.character(base_name) || !nzchar(base_name)) {
-    stop("Dataset name must be a valid string.")
+    cli::cli_abort("Dataset name must be a valid string.")
   }
 
   # 2. Convert the dataset name to ASCII (removing accents), then replace spaces with underscores
@@ -120,7 +134,7 @@ bdpe_get_token <- function(base_name) {
 
   # 5. If the token is empty, return NULL with a message
   if (token == "") {
-    message("No token found for dataset: ", base_name)
+    cli::cli_alert_warning("No token found for dataset: {.val {base_name}}")
     return(NULL)
   }
 
@@ -143,7 +157,7 @@ bdpe_get_token <- function(base_name) {
 bdpe_remove_token <- function(base_name) {
   # 1. Validate the base_name
   if (!is.character(base_name) || !nzchar(base_name)) {
-    stop("Dataset name must be a valid string.")
+    cli::cli_abort("Dataset name must be a valid string.")
   }
 
   # 2. Convert the dataset name to ASCII (removing accents), then replace spaces with underscores
@@ -157,9 +171,9 @@ bdpe_remove_token <- function(base_name) {
   if (nzchar(Sys.getenv(env_var_name, unset = ""))) {
     # If it exists, unset (remove) the variable
     Sys.unsetenv(env_var_name)
-    message("Token successfully removed for dataset: ", base_name)
+    cli::cli_alert_success("Token successfully removed for dataset: {.val {base_name}}")
   } else {
-    message("No token found for dataset: ", base_name)
+    cli::cli_alert_warning("No token found for dataset: {.val {base_name}}")
   }
 }
 
@@ -189,7 +203,7 @@ bdpe_list_tokens <- function() {
 
   # 3. If no tokens found, return empty vector with a message
   if (length(stored_tokens) == 0) {
-    message("No tokens found in environment variables.")
+    cli::cli_alert_info("No tokens found in environment variables.")
     return(character(0))
   }
 
@@ -213,11 +227,11 @@ bdpe_list_tokens <- function() {
 #'               If set to a non-positive value or `Inf`, no offset will be applied.
 #' @param query A named list of additional query parameters to filter the API results. Default is an empty list.
 #' @param endpoint A string specifying the API endpoint URL. Default is "https://www.bigdata.pe.gov.br/api/buscar".
-#' @param verbosity An integer specifying the verbosity level for the API requests.
+#' @param verbosity An integer specifying the verbosity level.
 #'                  Values are:
-#'                  - `0`: No verbosity (default).
-#'                  - `1`: Minimal verbosity, showing request status.
-#'                  - `2`: Detailed verbosity, including request and response details.
+#'                  - `0`: No output (default).
+#'                  - `1`: Show progress messages (records fetched, totals).
+#'                  - `2`: Show progress messages **and** full HTTP request/response details.
 #'
 #' @return A tibble containing the data returned by the API.
 #' @examples
@@ -246,10 +260,13 @@ bdpe_fetch_data <- function(
   # Retrieve the token for the specified dataset
   token <- bdpe_get_token(base_name)
 
-  # Input validation
-  stopifnot(is.list(query))
-  stopifnot(is.integer(offset))
-  stopifnot(is.integer(limit) || is.infinite(limit))
+  # Input validation and safe coercion
+  if (!is.list(query)) {
+    cli::cli_abort("{.arg query} must be a {.cls list}.")
+  }
+  offset    <- .safe_as_integer(offset, "offset")
+  limit     <- .safe_as_integer(limit, "limit")
+  verbosity <- .safe_as_integer(verbosity, "verbosity")
 
   # Adjust limit and offset for the request
   if (is.infinite(limit) || limit <= 0) limit <- ""
@@ -263,11 +280,37 @@ bdpe_fetch_data <- function(
       Authorization = token,
       limit = limit,
       offset = offset
-    )
+    ) |>
+    httr2::req_error(is_error = function(resp) FALSE)
 
-  # Perform the request and parse the response
-  res <- req |>
-    httr2::req_perform(verbosity = verbosity) |>
+  # Map package verbosity to httr2 verbosity:
+  #   0 or 1 -> httr2 silent; 2 -> httr2 shows headers
+  httr2_verbosity <- if (verbosity >= 2L) 1L else 0L
+
+  # Perform the request and handle errors
+  resp <- tryCatch(
+    httr2::req_perform(req, verbosity = httr2_verbosity),
+    error = function(e) {
+      cli::cli_abort(c(
+        "Unable to connect to the BigDataPE API.",
+        "i" = "Check your network connection and ensure you are on the {.emph PE Conectado} network or VPN.",
+        "x" = conditionMessage(e)
+      ))
+    }
+  )
+
+  # Check HTTP status
+  status <- httr2::resp_status(resp)
+  if (status >= 400L) {
+    reason <- httr2::resp_status_desc(resp)
+    cli::cli_abort(c(
+      "The BigDataPE API is currently unavailable (HTTP {status} - {reason}).",
+      "i" = "Try again later. If the problem persists, check that the API endpoint is correct and that your token is valid."
+    ))
+  }
+
+  # Parse response
+  res <- resp |>
     httr2::resp_body_json(simplifyVector = TRUE) |>
     tibble::as_tibble()
 
@@ -286,11 +329,11 @@ bdpe_fetch_data <- function(
 #' @param chunk_size An integer specifying the number of records to fetch per chunk. Default is 50000
 #' @param query A named list of additional query parameters to filter the API results. Default is an empty list.
 #' @param endpoint A string specifying the API endpoint URL. Default is "https://www.bigdata.pe.gov.br/api/buscar".
-#' @param verbosity An integer specifying the verbosity level for the API requests.
+#' @param verbosity An integer specifying the verbosity level.
 #'                  Values are:
-#'                  - `0`: No verbosity (default).
-#'                  - `1`: Minimal verbosity, showing request status.
-#'                  - `2`: Detailed verbosity, including request and response details.
+#'                  - `0`: No output (default).
+#'                  - `1`: Show progress messages (records fetched, totals).
+#'                  - `2`: Show progress messages **and** full HTTP request/response details.
 #' @return A tibble containing all the data retrieved from the API.
 #' @examples
 #' \dontrun{
@@ -312,10 +355,16 @@ bdpe_fetch_chunks <- function(
     verbosity = 0L,
     endpoint = "https://www.bigdata.pe.gov.br/api/buscar") {
 
-  # Input validation
-  stopifnot(is.integer(total_limit) || is.infinite(total_limit))
-  stopifnot(is.integer(chunk_size) && chunk_size > 0)
-  stopifnot(is.list(query))
+  # Input validation and safe coercion
+  total_limit <- .safe_as_integer(total_limit, "total_limit")
+  chunk_size  <- .safe_as_integer(chunk_size, "chunk_size")
+  verbosity   <- .safe_as_integer(verbosity, "verbosity")
+  if (!is.infinite(chunk_size) && chunk_size <= 0) {
+    cli::cli_abort("{.arg chunk_size} must be a positive {.cls integer}.")
+  }
+  if (!is.list(query)) {
+    cli::cli_abort("{.arg query} must be a {.cls list}.")
+  }
 
   # Initialize variables
   offset <- 0L
@@ -326,8 +375,6 @@ bdpe_fetch_chunks <- function(
   repeat {
     # Calculate the limit for the current chunk
     current_limit <- as.integer(min(chunk_size, total_limit - total_fetched))
-
-    #if(verbosity > 0) message("Current limit: ", current_limit)
 
     # Break if no more records are needed
     if (current_limit <= 0) break
@@ -343,9 +390,6 @@ bdpe_fetch_chunks <- function(
     )
     nms <- names(chunk)
 
-    #if(verbosity > 0)
-    #  chunk |> glimpse()
-
     if ("Mensagem" %in% nms)
       chunk <- dplyr::select(chunk, -"Mensagem")
 
@@ -356,6 +400,10 @@ bdpe_fetch_chunks <- function(
     all_data <- append(all_data, list(chunk))
     total_fetched <- as.integer(total_fetched) + nrow(chunk)
 
+    if (verbosity > 0L) {
+      cli::cli_alert_info("Fetched {nrow(chunk)} records (total: {total_fetched}).")
+    }
+
     # Update the offset for the next chunk
     offset <- as.integer(offset) + nrow(chunk)
 
@@ -365,5 +413,10 @@ bdpe_fetch_chunks <- function(
 
   # Combine all chunks into a single tibble
   combined_data <- dplyr::bind_rows(all_data)
+
+  if (verbosity > 0L) {
+    cli::cli_alert_success("Fetching complete: {nrow(combined_data)} records retrieved.")
+  }
+
   return(combined_data)
 }

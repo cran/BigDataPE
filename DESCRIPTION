@@ -1,24 +1,31 @@
 Package: BigDataPE
 Title: Secure and Intuitive Access to 'BigDataPE' 'API' Datasets
-Version: 0.0.96
-Date: 2025-04-02
+Version: 0.1.0
+Date: 2026-04-07
 Authors@R: c(
             person("Andre", "Leite", email = "leite@castlab.org", role = c("aut", "cre")),
             person("Hugo", "Vaconcelos", email = "hugo.vasconcelos@ufpe.br", role = "aut"),
-            person("Diogo", "Bezerra", email = "diogo.bezerra@ufpe.br", role = "aut"))
+            person("Diogo", "Bezerra", email = "diogo.bezerra@ufpe.br", role = "aut"),
+            person("Marcos", "Wasilew", email = "marcos.wasilew@gmail.com", role = "aut"),
+            person("Carlos", "Amorin", email = "carlos.agaf@ufpe.br", role = "aut"))
 Description: Designed to simplify the process of retrieving datasets from the 'Big Data PE' platform using secure token-based authentication. It provides functions for securely storing, retrieving, and managing tokens associated with specific datasets, as well as fetching and processing data using the 'httr2' package. 
 License: MIT + file LICENSE
 Encoding: UTF-8
-RoxygenNote: 7.3.2
+RoxygenNote: 7.3.3
 Depends: R (>= 4.1.0)
-Imports: dplyr, tibble, httr2
-URL: <https://github.com/StrategicProjects/bigdatape>
+Imports: cli, dplyr, tibble, httr2
+URL: <https://strategicprojects.github.io/BigDataPE/>,
+        <https://github.com/StrategicProjects/bigdatape>
+Suggests: knitr, rmarkdown, tidyr
+VignetteBuilder: knitr
 Config/Needs/website: tidyverse/tidytemplate
 NeedsCompilation: no
-Packaged: 2025-04-02 12:56:34 UTC; leite
+Packaged: 2026-04-07 16:48:07 UTC; leite
 Author: Andre Leite [aut, cre],
   Hugo Vaconcelos [aut],
-  Diogo Bezerra [aut]
+  Diogo Bezerra [aut],
+  Marcos Wasilew [aut],
+  Carlos Amorin [aut]
 Maintainer: Andre Leite <leite@castlab.org>
 Repository: CRAN
-Date/Publication: 2025-04-02 13:10:05 UTC
+Date/Publication: 2026-04-07 17:00:02 UTC

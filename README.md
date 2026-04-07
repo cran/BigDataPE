@@ -8,7 +8,8 @@
 ![CRAN_Status_Badge](https://www.r-pkg.org/badges/version/BigDataPE) 
 ![CRAN Downloads](https://cranlogs.r-pkg.org/badges/grand-total/BigDataPE) 
 ![License](https://img.shields.io/badge/license-MIT-darkviolet.svg) 
-![](https://img.shields.io/badge/devel%20version-0.0.96-orangered.svg)
+![Devl
+Badge](https://img.shields.io/badge/devel%20version-0.1.0-orangered.svg)
 
 <!-- badges: end -->
 
@@ -18,8 +19,32 @@ to fetch data from the API using token-based authentication, manage
 multiple tokens for different datasets, and retrieve data efficiently
 using chunking.
 
-> **Note:** To access the **BigDataPE API**, you must be connected to
-> the “PE Conectado” network or use a VPN.
+<table class="important-banner">
+
+<tr>
+
+<td>
+
+❕️ <strong class="important-title">Disclaimer</strong><br> This package
+acts as a wrapper for Brazilian public APIs provided by the **Big Data
+PE** platform, maintained by the Government of the State of Pernambuco,
+which is the institution responsible for the data. To maintain
+consistency with R package development standards, all wrapper functions
+use English names and English parameter names (e.g.,
+`bdpe_store_token()`, `bdpe_fetch_data()`, `bdpe_fetch_chunks()`).
+However, because the source API is natively in Portuguese, **response
+column names** are returned in Portuguese (e.g., `nu_notificacao`,
+`dt_notificacao`, `co_municipio_residencia`, `tp_sexo`,
+`no_bairro_residencia`), and some **data values** are also in Portuguese
+(e.g., neighbourhood names like `"BOA VIAGEM"`, `"SANTO AMARO"`).
+Additionally, access to the Big Data PE API requires an approved
+**access request** on the platform and a connection to the **PE
+Conectado** network or a **VPN** — external connections will time out.
+</td>
+
+</tr>
+
+</table>
 
 ## Installation
 

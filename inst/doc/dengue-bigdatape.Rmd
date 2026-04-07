@@ -1,0 +1,306 @@
+---
+title: "Exploring Dengue Data with BigDataPE"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Exploring Dengue Data with BigDataPE}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = FALSE
+)
+```
+
+## Introduction
+
+The **BigDataPE** package provides a simple and secure interface for
+accessing datasets published by the Big Data PE platform from the
+Government of the State of Pernambuco, Brazil.
+
+In this vignette we walk through the full package workflow using the
+**Dengue, Zika and Chikungunya** dataset — a record of notified cases in
+health units (public and private) in Recife, shared by the State Health
+Department of Pernambuco (Secretaria Estadual de Saude de Pernambuco).
+
+| Field                       | Value                                            |
+|-----------------------------|--------------------------------------------------|
+| **Classification**          | Broad (public)                                   |
+| **Source institution**      | State Health Department of Pernambuco             |
+| **Ingestion type**          | SQL                                              |
+| **Records**                 | 1 009                                            |
+| **LGPD level**              | None                                             |
+| **Last updated**            | 2024-05-24                                       |
+
+> **Access note:** Although this dataset is public, you must submit an
+> **access request** on the Big Data PE platform and be connected to the
+> **PE Conectado** network or a **VPN** to query the data through the
+> API. Without this connection, requests will time out or return a
+> service-unavailable error.
+
+## Setup
+
+Load the package and the helper libraries used in the analysis:
+
+```{r libraries}
+library(BigDataPE)
+library(dplyr)
+library(tibble)
+```
+
+## 1. Storing the access token
+
+The first step is to store the authentication token associated with the
+dataset. This token is provided by the Big Data PE platform after your
+access request is approved.
+
+```{r store-token}
+bdpe_store_token("dengue", "your-token-here")
+#> ✔ Token stored in environment variable: `BigDataPE_dengue`
+```
+
+You can verify that the token was stored correctly:
+
+```{r list-tokens}
+bdpe_list_tokens()
+#> [1] "dengue"
+```
+
+## 2. Fetching data
+
+### Basic query
+
+`bdpe_fetch_data()` is the most direct way to query the API. Let's
+fetch the first 100 records:
+
+```{r basic-fetch}
+data <- bdpe_fetch_data("dengue", limit = 100, offset = 0)
+glimpse(data)
+#> Rows: 100
+#> Columns: 126
+#> $ nu_notificacao           <chr> "3517726", "3613049", "3507055", ...
+#> $ tp_notificacao           <chr> "2", "2", "2", ...
+#> $ co_cid                   <chr> "A90", "A90", "A90", ...
+#> $ dt_notificacao           <chr> "2020-07-07", "2020-06-27", "2020-01-03", ...
+#> $ ds_semana_notificacao    <chr> "202028", "202026", "202001", ...
+#> $ notificacao_ano          <chr> "2020", "2020", "2020", ...
+#> $ co_municipio_notificacao <chr> "261160", "260790", "261160", ...
+#> $ tp_sexo                  <chr> "M", "M", "M", ...
+#> $ febre                    <chr> "1", "1", "1", ...
+#> $ mialgia                  <chr> "1", "2", "1", ...
+#> $ cefaleia                 <chr> "2", "1", "1", ...
+#> $ ...
+```
+
+The dataset contains **126 columns** with detailed information on each
+notification, including demographics, symptoms, laboratory results,
+warning signs, severity indicators and case outcome.
+
+### Using query parameters
+
+The API supports additional filters through the `query` parameter.
+For example, to fetch only notifications from the year 2020:
+
+```{r query-year}
+dengue_2020 <- bdpe_fetch_data(
+  "dengue",
+  limit = 50,
+  offset = 0,
+  query = list(notificacao_ano = "2020")
+)
+nrow(dengue_2020)
+#> [1] 50
+```
+
+You can also filter by municipality of residence. The IBGE code for
+Recife is `261160`:
+
+```{r query-municipality}
+dengue_recife <- bdpe_fetch_data(
+  "dengue",
+  limit = 100,
+  offset = 0,
+  query = list(co_municipio_residencia = "261160")
+)
+nrow(dengue_recife)
+#> [1] 100
+```
+
+Filters can be combined. To fetch female cases in Recife:
+
+```{r query-combined}
+dengue_female_recife <- bdpe_fetch_data(
+  "dengue",
+  limit = 100,
+  offset = 0,
+  query = list(
+    co_municipio_residencia = "261160",
+    tp_sexo = "F"
+  )
+)
+nrow(dengue_female_recife)
+```
+
+## 3. Fetching data in chunks
+
+When the data volume is large, use `bdpe_fetch_chunks()` which
+paginates automatically. To fetch all 1,009 records in blocks of 500:
+
+```{r chunks}
+all_data <- bdpe_fetch_chunks(
+  "dengue",
+  total_limit = Inf,
+  chunk_size = 500,
+  verbosity = 1
+)
+#> ℹ Fetched 500 records (total: 500).
+#> ℹ Fetched 500 records (total: 1000).
+#> ℹ Fetched 9 records (total: 1009).
+#> ✔ Fetching complete: 1009 records retrieved.
+
+dim(all_data)
+#> [1] 1009  126
+```
+
+## 4. Exploring the data
+
+With the data in hand we can run quick exploratory summaries.
+
+### Distribution by sex
+
+```{r dist-sex}
+all_data |>
+  count(tp_sexo, sort = TRUE)
+#> # A tibble: 3 x 2
+#>   tp_sexo     n
+#>   <chr>   <int>
+#> 1 F         561
+#> 2 M         443
+#> 3 I           5
+```
+
+### Notifications by year
+
+```{r dist-year}
+all_data |>
+  count(notificacao_ano, sort = TRUE)
+#> # A tibble: 1 x 2
+#>   notificacao_ano     n
+#>   <chr>           <int>
+#> 1 2020             1009
+```
+
+### Most frequent symptoms
+
+Symptom fields use `"1"` for yes and `"2"` for no. We can compute
+the proportion of each symptom:
+
+```{r symptoms}
+symptoms <- c("febre", "mialgia", "cefaleia", "exantema", "vomito",
+              "nausea", "dor_costas", "conjutivite", "artrite",
+              "artralgia", "dor_retro")
+
+all_data |>
+  summarise(across(all_of(symptoms), ~ mean(.x == "1", na.rm = TRUE))) |>
+  tidyr::pivot_longer(everything(),
+                      names_to  = "symptom",
+                      values_to = "proportion") |>
+  arrange(desc(proportion))
+#> # A tibble: 11 x 2
+#>    symptom      proportion
+#>    <chr>             <dbl>
+#>  1 febre             0.914
+#>  2 cefaleia          0.531
+#>  3 mialgia           0.512
+#>  4 artralgia         0.194
+#>  5 exantema          0.181
+#>  6 dor_costas        0.155
+#>  7 vomito            0.150
+#>  8 nausea            0.139
+#>  9 dor_retro         0.125
+#> 10 conjutivite       0.053
+#> 11 artrite           0.046
+```
+
+### Distribution by neighbourhood (top 10)
+
+```{r neighbourhoods}
+all_data |>
+  filter(no_bairro_residencia != "") |>
+  count(no_bairro_residencia, sort = TRUE) |>
+  head(10)
+#> # A tibble: 10 x 2
+#>    no_bairro_residencia     n
+#>    <chr>                <int>
+#>  1 IBURA                  46
+#>  2 VARZEA                 37
+#>  3 COHAB                  33
+#>  4 BOA VIAGEM             30
+#>  5 AGUA FRIA              27
+#>  ...
+```
+
+### Hospitalisations
+
+```{r hospitalisations}
+all_data |>
+  count(st_ocorreu_hospitalizacao) |>
+  mutate(description = case_match(
+    st_ocorreu_hospitalizacao,
+    "1" ~ "Yes",
+    "2" ~ "No",
+    "9" ~ "Unknown",
+    ""  ~ "Not reported"
+  ))
+#> # A tibble: 4 x 3
+#>   st_ocorreu_hospitalizacao     n description
+#>   <chr>                     <int> <chr>
+#> 1                             330 Not reported
+#> 2 1                            51 Yes
+#> 3 2                           565 No
+#> 4 9                            63 Unknown
+```
+
+## 5. Managing tokens
+
+### Retrieve a stored token
+
+```{r get-token}
+my_token <- bdpe_get_token("dengue")
+```
+
+### Remove a token
+
+At the end of your session, or when the token is no longer needed:
+
+```{r remove-token}
+bdpe_remove_token("dengue")
+#> ✔ Token successfully removed for dataset: "dengue"
+```
+
+## Data dictionary (key variables)
+
+| Variable                       | Description                                  |
+|-------------------------------|----------------------------------------------|
+| `nu_notificacao`              | Notification number                          |
+| `co_cid`                      | ICD-10 code (A90 = Dengue)                  |
+| `dt_notificacao`              | Notification date                            |
+| `notificacao_ano`             | Notification year                            |
+| `co_municipio_notificacao`    | IBGE code of the notifying municipality      |
+| `dt_diagnostico_sintoma`      | Date of first symptoms                       |
+| `tp_sexo`                     | Sex (M, F, I = Indeterminate)                |
+| `tp_raca_cor`                 | Race/colour (1--5, 9 = Unknown)              |
+| `no_bairro_residencia`        | Neighbourhood of residence                   |
+| `febre` ... `dor_retro`       | Symptoms (1 = Yes, 2 = No)                  |
+| `diabetes` ... `auto_imune`   | Pre-existing conditions (1 = Yes, 2 = No)   |
+| `st_ocorreu_hospitalizacao`   | Hospitalisation occurred (1/2/9)             |
+| `tp_classificacao_final`      | Final case classification                    |
+| `tp_evolucao_caso`            | Outcome (1 = Recovery, 2 = Death, ...)       |
+
+## References
+
+- [Big Data Package](https://strategicprojects.github.io/BigDataPE/)
+- [BigDataPE package repository](https://github.com/StrategicProjects/bigdatape)
