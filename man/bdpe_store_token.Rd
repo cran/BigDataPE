@@ -22,7 +22,7 @@ replacing spaces with underscores, and prefixing it with "BigDataPE_".
 }
 \details{
 If a variable with that name already exists (and is non-empty), the function
-will stop and notify you to avoid overwriting. Adjust this behavior as needed.
+will not overwrite it.
 }
 \examples{
 bdpe_store_token("education_dataset", "your-token-here")

@@ -1,22 +1,30 @@
-# Safe coercion to integer -------------------------------------------------
-# Tries to convert a scalar value to integer. If conversion is not possible
-# (e.g. character, logical, NA, or a numeric with fractional part) an
-# informative error is raised via cli.
-# Values that are already integer or Inf pass through unchanged.
-.safe_as_integer <- function(x, arg_name) {
-  if (is.infinite(x)) return(x)
-  if (is.integer(x)) return(x)
-  if (is.numeric(x) && length(x) == 1L && !is.na(x) && x == trunc(x)) {
-    return(as.integer(x))
-  }
-  cli::cli_abort(
-    "{.arg {arg_name}} must be a whole number or {.val Inf}, not {.cls {class(x)}} ({.val {x}})."
+# BigDataPE is now a thin wrapper around the generic 'apifetch' package.
+# Every bdpe_* function delegates to its af_* counterpart, supplying the
+# conventions specific to the Big Data PE service. The public API and the
+# environment-variable token names are unchanged, so existing code and stored
+# tokens keep working.
+
+# Internal: the Big Data PE API profile -------------------------------------
+# Captures everything specific to this service: the token is sent verbatim in
+# the Authorization header (`af_auth_raw()`); `limit`/`offset` travel as HTTP
+# headers (`af_paginate_offset("header")`); the API returns a "Mensagem" status
+# column that is dropped when combining chunks; and the service is only
+# reachable from the PE Conectado network or VPN.
+.bdpe_api <- function(endpoint = "https://www.bigdata.pe.gov.br/api/buscar") {
+  apifetch::af_api(
+    endpoint     = endpoint,
+    service      = "BigDataPE",
+    auth         = apifetch::af_auth_raw(),
+    pagination   = apifetch::af_paginate_offset("header"),
+    drop_cols    = "Mensagem",
+    connect_hint = "Check that you are on the PE Conectado network or VPN."
   )
 }
 
 #' Constructs a URL with query parameters
 #'
-#' This function appends a list of query parameters to a base URL.
+#' This function appends a list of query parameters to a base URL. It is a thin
+#' re-export of [apifetch::parse_queries()].
 #'
 #' @param url The base URL to which query parameters will be added.
 #' @param query_list A list of query parameters to be added to the URL.
@@ -25,33 +33,8 @@
 #' parse_queries("https://www.example.com", list(param1 = "value1", param2 = "value2"))
 #' @export
 parse_queries <- function(url, query_list) {
-  if (length(query_list) == 0) {
-    return(url) # Return the base URL if no queries are provided
-  }
-
-  # Filter out parameters with empty values
-  query_list <- query_list[query_list != ""]
-
-  # If no valid parameters remain, return the base URL
-  if (length(query_list) == 0) {
-    return(url)
-  }
-
-  # Encode parameters and construct the query string
-  query_string <- paste(
-    sapply(names(query_list), function(name) {
-      paste0(
-        utils::URLencode(name, reserved = TRUE), "=", utils::URLencode(as.character(query_list[[name]]), reserved = TRUE)
-      )
-    }),
-    collapse = "&"
-  )
-
-  # Append the query string to the URL
-  paste0(url, "?", query_string)
+  apifetch::parse_queries(url, query_list)
 }
-
-
 
 #' Store a token in an environment variable for a specific dataset
 #'
@@ -61,7 +44,7 @@ parse_queries <- function(url, query_list) {
 #' replacing spaces with underscores, and prefixing it with "BigDataPE_".
 #'
 #' If a variable with that name already exists (and is non-empty), the function
-#' will stop and notify you to avoid overwriting. Adjust this behavior as needed.
+#' will not overwrite it.
 #'
 #' @param base_name The name of the dataset (character).
 #' @param token The authentication token for the dataset (character).
@@ -72,35 +55,7 @@ parse_queries <- function(url, query_list) {
 #'
 #' @export
 bdpe_store_token <- function(base_name, token) {
-  # 1. Validate inputs
-  if (!is.character(base_name) || !nzchar(base_name)) {
-    cli::cli_abort("Dataset name must be a valid string.")
-  }
-  if (!is.character(token) || !nzchar(token)) {
-    cli::cli_abort("Token must be a valid string.")
-  }
-
-  # 2. Convert the dataset name to ASCII (removing accents), then replace spaces with underscores
-  base_name_ascii <- iconv(base_name, from = "", to = "ASCII//TRANSLIT")
-  base_name_sanitized <- gsub(" ", "_", base_name_ascii)
-
-  # 3. Construct the environment variable name
-  env_var_name <- paste0("BigDataPE_", base_name_sanitized)
-
-  # 4. Check if the environment variable is already in use
-  if (nzchar(Sys.getenv(env_var_name, unset = ""))) {
-    cli::cli_alert_warning(
-      "The environment variable {.envvar {env_var_name}} is already defined. Not overwriting to avoid data loss."
-    )
-    return(invisible())
-  }
-
-  # 5. Store the token in the environment variable
-  env_list <- list(token)
-  names(env_list) <- env_var_name
-  do.call(Sys.setenv, env_list)
-
-  cli::cli_alert_success("Token stored in environment variable: {.envvar {env_var_name}}")
+  apifetch::af_store_token(base_name, token, service = "BigDataPE")
 }
 
 #' Retrieve the token associated with a specific dataset
@@ -117,28 +72,7 @@ bdpe_store_token <- function(base_name, token) {
 #'
 #' @export
 bdpe_get_token <- function(base_name) {
-  # 1. Validate the base_name
-  if (!is.character(base_name) || !nzchar(base_name)) {
-    cli::cli_abort("Dataset name must be a valid string.")
-  }
-
-  # 2. Convert the dataset name to ASCII (removing accents), then replace spaces with underscores
-  base_name_ascii <- iconv(base_name, from = "", to = "ASCII//TRANSLIT")
-  base_name_sanitized <- gsub(" ", "_", base_name_ascii)
-
-  # 3. Construct the environment variable name
-  env_var_name <- paste0("BigDataPE_", base_name_sanitized)
-
-  # 4. Retrieve the token from the environment variable
-  token <- Sys.getenv(env_var_name, unset = "")
-
-  # 5. If the token is empty, return NULL with a message
-  if (token == "") {
-    cli::cli_alert_warning("No token found for dataset: {.val {base_name}}")
-    return(NULL)
-  }
-
-  return(token)
+  apifetch::af_get_token(base_name, service = "BigDataPE")
 }
 
 #' Remove the token associated with a specific dataset
@@ -155,29 +89,8 @@ bdpe_get_token <- function(base_name) {
 #'
 #' @export
 bdpe_remove_token <- function(base_name) {
-  # 1. Validate the base_name
-  if (!is.character(base_name) || !nzchar(base_name)) {
-    cli::cli_abort("Dataset name must be a valid string.")
-  }
-
-  # 2. Convert the dataset name to ASCII (removing accents), then replace spaces with underscores
-  base_name_ascii <- iconv(base_name, from = "", to = "ASCII//TRANSLIT")
-  base_name_sanitized <- gsub(" ", "_", base_name_ascii)
-
-  # 3. Construct the environment variable name
-  env_var_name <- paste0("BigDataPE_", base_name_sanitized)
-
-  # 4. Check if the variable exists (non-empty)
-  if (nzchar(Sys.getenv(env_var_name, unset = ""))) {
-    # If it exists, unset (remove) the variable
-    Sys.unsetenv(env_var_name)
-    cli::cli_alert_success("Token successfully removed for dataset: {.val {base_name}}")
-  } else {
-    cli::cli_alert_warning("No token found for dataset: {.val {base_name}}")
-  }
+  apifetch::af_remove_token(base_name, service = "BigDataPE")
 }
-
-
 
 #' List all datasets that have stored tokens in environment variables
 #'
@@ -195,25 +108,8 @@ bdpe_remove_token <- function(base_name) {
 #'
 #' @export
 bdpe_list_tokens <- function() {
-  # 1. Retrieve all environment variables
-  all_envs <- Sys.getenv()
-
-  # 2. Filter for those that start with 'BigDataPE_'
-  stored_tokens <- grep("^BigDataPE_", names(all_envs), value = TRUE)
-
-  # 3. If no tokens found, return empty vector with a message
-  if (length(stored_tokens) == 0) {
-    cli::cli_alert_info("No tokens found in environment variables.")
-    return(character(0))
-  }
-
-  # 4. Remove prefix from variable names to extract the "sanitized" dataset name
-  dataset_names <- sub("^BigDataPE_", "", stored_tokens)
-
-  # 5. Return the dataset names
-  return(dataset_names)
+  apifetch::af_list_tokens(service = "BigDataPE")
 }
-
 
 #' Fetch data from the BigDataPE API
 #'
@@ -256,67 +152,15 @@ bdpe_fetch_data <- function(
     query = list(),
     verbosity = 0L,
     endpoint = "https://www.bigdata.pe.gov.br/api/buscar") {
-
-  # Retrieve the token for the specified dataset
-  token <- bdpe_get_token(base_name)
-
-  # Input validation and safe coercion
-  if (!is.list(query)) {
-    cli::cli_abort("{.arg query} must be a {.cls list}.")
-  }
-  offset    <- .safe_as_integer(offset, "offset")
-  limit     <- .safe_as_integer(limit, "limit")
-  verbosity <- .safe_as_integer(verbosity, "verbosity")
-
-  # Adjust limit and offset for the request
-  if (is.infinite(limit) || limit <= 0) limit <- ""
-  if (is.infinite(offset) || offset <= 0) offset <- ""
-
-  # Build and send the API request
-  req <- endpoint |>
-    parse_queries(query_list = query) |>
-    httr2::request() |>
-    httr2::req_headers(
-      Authorization = token,
-      limit = limit,
-      offset = offset
-    ) |>
-    httr2::req_error(is_error = function(resp) FALSE)
-
-  # Map package verbosity to httr2 verbosity:
-  #   0 or 1 -> httr2 silent; 2 -> httr2 shows headers
-  httr2_verbosity <- if (verbosity >= 2L) 1L else 0L
-
-  # Perform the request and handle errors
-  resp <- tryCatch(
-    httr2::req_perform(req, verbosity = httr2_verbosity),
-    error = function(e) {
-      cli::cli_abort(c(
-        "Unable to connect to the BigDataPE API.",
-        "i" = "Check your network connection and ensure you are on the {.emph PE Conectado} network or VPN.",
-        "x" = conditionMessage(e)
-      ))
-    }
+  apifetch::af_fetch(
+    .bdpe_api(endpoint),
+    base_name,
+    limit = limit,
+    offset = offset,
+    query = query,
+    verbosity = verbosity
   )
-
-  # Check HTTP status
-  status <- httr2::resp_status(resp)
-  if (status >= 400L) {
-    reason <- httr2::resp_status_desc(resp)
-    cli::cli_abort(c(
-      "The BigDataPE API is currently unavailable (HTTP {status} - {reason}).",
-      "i" = "Try again later. If the problem persists, check that the API endpoint is correct and that your token is valid."
-    ))
-  }
-
-  # Parse response
-  res <- resp |>
-    httr2::resp_body_json(simplifyVector = TRUE) |>
-    tibble::as_tibble()
-
-  return(res)
 }
-
 
 #' Fetch data from the BigDataPE API in chunks
 #'
@@ -326,7 +170,7 @@ bdpe_fetch_data <- function(
 #'
 #' @param base_name A string specifying the name of the dataset associated with the token.
 #' @param total_limit An integer specifying the maximum number of records to fetch. Default is Inf (all available data).
-#' @param chunk_size An integer specifying the number of records to fetch per chunk. Default is 50000
+#' @param chunk_size An integer specifying the number of records to fetch per chunk. Default is 500000
 #' @param query A named list of additional query parameters to filter the API results. Default is an empty list.
 #' @param endpoint A string specifying the API endpoint URL. Default is "https://www.bigdata.pe.gov.br/api/buscar".
 #' @param verbosity An integer specifying the verbosity level.
@@ -354,69 +198,12 @@ bdpe_fetch_chunks <- function(
     query = list(),
     verbosity = 0L,
     endpoint = "https://www.bigdata.pe.gov.br/api/buscar") {
-
-  # Input validation and safe coercion
-  total_limit <- .safe_as_integer(total_limit, "total_limit")
-  chunk_size  <- .safe_as_integer(chunk_size, "chunk_size")
-  verbosity   <- .safe_as_integer(verbosity, "verbosity")
-  if (!is.infinite(chunk_size) && chunk_size <= 0) {
-    cli::cli_abort("{.arg chunk_size} must be a positive {.cls integer}.")
-  }
-  if (!is.list(query)) {
-    cli::cli_abort("{.arg query} must be a {.cls list}.")
-  }
-
-  # Initialize variables
-  offset <- 0L
-  total_fetched <- 0L
-  all_data <- list()
-
-  # Fetch data in chunks
-  repeat {
-    # Calculate the limit for the current chunk
-    current_limit <- as.integer(min(chunk_size, total_limit - total_fetched))
-
-    # Break if no more records are needed
-    if (current_limit <= 0) break
-
-    # Fetch the current chunk
-    chunk <- bdpe_fetch_data(
-      base_name = base_name,
-      limit = current_limit,
-      offset = offset,
-      query = query,
-      verbosity = verbosity,
-      endpoint = endpoint
-    )
-    nms <- names(chunk)
-
-    if ("Mensagem" %in% nms)
-      chunk <- dplyr::select(chunk, -"Mensagem")
-
-    # Stop if the API returns no data
-    if (nrow(chunk) == 0L) break
-
-    # Append the chunk to the results
-    all_data <- append(all_data, list(chunk))
-    total_fetched <- as.integer(total_fetched) + nrow(chunk)
-
-    if (verbosity > 0L) {
-      cli::cli_alert_info("Fetched {nrow(chunk)} records (total: {total_fetched}).")
-    }
-
-    # Update the offset for the next chunk
-    offset <- as.integer(offset) + nrow(chunk)
-
-    # Break if the total limit is reached
-    if (total_fetched >= total_limit) break
-  }
-
-  # Combine all chunks into a single tibble
-  combined_data <- dplyr::bind_rows(all_data)
-
-  if (verbosity > 0L) {
-    cli::cli_alert_success("Fetching complete: {nrow(combined_data)} records retrieved.")
-  }
-
-  return(combined_data)
+  apifetch::af_fetch_all(
+    .bdpe_api(endpoint),
+    base_name,
+    total_limit = total_limit,
+    chunk_size = chunk_size,
+    query = query,
+    verbosity = verbosity
+  )
 }

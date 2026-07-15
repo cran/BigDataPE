@@ -15,7 +15,8 @@ parse_queries(url, query_list)
 The complete URL with the query parameters appended.
 }
 \description{
-This function appends a list of query parameters to a base URL.
+This function appends a list of query parameters to a base URL. It is a thin
+re-export of \code{\link[apifetch:parse_queries]{apifetch::parse_queries()}}.
 }
 \examples{
 parse_queries("https://www.example.com", list(param1 = "value1", param2 = "value2"))

@@ -26,9 +26,11 @@ If set to a non-positive value or \code{Inf}, no offset will be applied.}
 
 \item{verbosity}{An integer specifying the verbosity level.
 Values are:
-- \code{0}: No output (default).
-- \code{1}: Show progress messages (records fetched, totals).
-- \code{2}: Show progress messages \strong{and} full HTTP request/response details.}
+\itemize{
+\item \code{0}: No output (default).
+\item \code{1}: Show progress messages (records fetched, totals).
+\item \code{2}: Show progress messages \strong{and} full HTTP request/response details.
+}}
 
 \item{endpoint}{A string specifying the API endpoint URL. Default is "https://www.bigdata.pe.gov.br/api/buscar".}
 }

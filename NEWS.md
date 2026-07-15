@@ -1,3 +1,17 @@
+# BigDataPE 0.2.0
+
+## Changes
+
+- BigDataPE is now a thin wrapper around the new generic 'apifetch' package:
+  every `bdpe_*` function delegates to its `apifetch::af_*` counterpart with the
+  Big Data PE service conventions (token sent verbatim in the `Authorization`
+  header, `limit`/`offset` as HTTP headers, the `"Mensagem"` status column
+  dropped when combining chunks). The public API is unchanged, and the
+  environment-variable token names (`BigDataPE_<dataset>`) are identical, so
+  existing code and stored tokens keep working.
+- `Imports` is now just `apifetch`; the direct dependencies on `cli`, `dplyr`,
+  `tibble`, and `httr2` are inherited transitively through `apifetch`.
+
 # BigDataPE 0.1.0
 
 ## New Features
@@ -12,7 +26,7 @@
 ## Changes
 
 - Added `cli` as a package dependency in `Imports`.
-- Added Marcos Wasilew and Carlos Amorin as package authors.
+- Added Marcos Wasiliew and Carlos Amorim as package authors.
 - Added vignette "Exploring Dengue Data with BigDataPE" demonstrating the full package workflow with the public dengue dataset.
 
 # BigDataPE 0.0.96
