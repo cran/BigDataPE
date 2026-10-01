@@ -7,7 +7,7 @@
 bdpe_fetch_chunks(
   base_name,
   total_limit = Inf,
-  chunk_size = 500000L,
+  chunk_size = 50000L,
   query = list(),
   verbosity = 0L,
   endpoint = "https://www.bigdata.pe.gov.br/api/buscar"
@@ -18,7 +18,8 @@ bdpe_fetch_chunks(
 
 \item{total_limit}{An integer specifying the maximum number of records to fetch. Default is Inf (all available data).}
 
-\item{chunk_size}{An integer specifying the number of records to fetch per chunk. Default is 500000}
+\item{chunk_size}{An integer specifying the number of records to fetch per chunk. Default is 50000;
+\code{Inf} requests everything in a single call.}
 
 \item{query}{A named list of additional query parameters to filter the API results. Default is an empty list.}
 
@@ -37,8 +38,10 @@ A tibble containing all the data retrieved from the API.
 }
 \description{
 This function retrieves data from the BigDataPE API iteratively in chunks.
-It uses \code{bdpe_fetch_data} as the base function and supports limits for the
-total number of records to fetch and the size of each chunk.
+It calls the API repeatedly with an advancing offset, stopping when a chunk
+comes back empty or \code{total_limit} is reached, and combines the chunks into a
+single tibble (dropping the API's \code{Mensagem} status column). If the API
+returns more rows than requested, the result is truncated to \code{total_limit}.
 }
 \examples{
 \dontrun{

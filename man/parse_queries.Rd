@@ -9,14 +9,17 @@ parse_queries(url, query_list)
 \arguments{
 \item{url}{The base URL to which query parameters will be added.}
 
-\item{query_list}{A list of query parameters to be added to the URL.}
+\item{query_list}{A named list of query parameters to be added to the URL.}
 }
 \value{
 The complete URL with the query parameters appended.
 }
 \description{
 This function appends a list of query parameters to a base URL. It is a thin
-re-export of \code{\link[apifetch:parse_queries]{apifetch::parse_queries()}}.
+re-export of \code{\link[apifetch:parse_queries]{apifetch::parse_queries()}}. Names and values are URL-encoded;
+parameters whose value is \code{NULL}, \code{NA} or the empty string are dropped; a
+parameter with several values is repeated (\code{a=1&a=2}); and if \code{url} already
+has a query string, the new parameters are appended to it.
 }
 \examples{
 parse_queries("https://www.example.com", list(param1 = "value1", param2 = "value2"))

@@ -1,7 +1,7 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# BigDataPE <a href="https://github.com/StrategicProjects/bigdatape"><img src="man/figures/logo.png" align="right" height="106" alt="BigDataPE website" /></a>
+# BigDataPE <a href="https://github.com/StrategicProjects/BigDataPE"><img src="man/figures/logo.png" align="right" height="106" alt="BigDataPE website" /></a>
 
 <!-- badges: start -->
 
@@ -9,7 +9,7 @@
 ![CRAN Downloads](https://cranlogs.r-pkg.org/badges/grand-total/BigDataPE) 
 ![License](https://img.shields.io/badge/license-MIT-darkviolet.svg) 
 ![Devl
-Badge](https://img.shields.io/badge/devel%20version-0.1.0-orangered.svg)
+Badge](https://img.shields.io/badge/devel%20version-0.3.0-orangered.svg)
 
 <!-- badges: end -->
 
@@ -48,14 +48,17 @@ Conectado** network or a **VPN** — external connections will time out.
 
 ## Installation
 
-You can install the `BigDataPE` package directly from GitHub:
+Install the released version from CRAN:
 
 ``` r
-# Install the devtools package if you haven't already
-install.packages("devtools")
+install.packages("BigDataPE")
+```
 
-# Install BigDataPE from GitHub
-devtools::install_github("StrategicProjects/bigdatape")
+Or the development version from GitHub:
+
+``` r
+# install.packages("remotes")
+remotes::install_github("StrategicProjects/BigDataPE")
 ```
 
 After installation, load the package:
@@ -79,18 +82,23 @@ This function securely stores an authentication token for a specific
 dataset.
 
 ``` r
-bdpe_store_token(base_name, token)
+bdpe_store_token(base_name, token, overwrite = FALSE)
 ```
 
 **Parameters**:
 
 - `base_name`: The name of the dataset.
 - `token`: The authentication token for the dataset.
+- `overwrite`: Replace a token already stored for this dataset (e.g. an
+  expired one). Default is `FALSE`.
 
 **Example**:
 
 ``` r
 bdpe_store_token("education_dataset", "your-token-here")
+
+# Replace an expired token
+bdpe_store_token("education_dataset", "new-token", overwrite = TRUE)
 ```
 
 ------------------------------------------------------------------------
@@ -191,7 +199,7 @@ This function retrieves data from the API iteratively in chunks.
 bdpe_fetch_chunks(
   base_name, 
   total_limit = Inf, 
-  chunk_size = 100, 
+  chunk_size = 50000, 
   query = list(), 
   endpoint = "https://www.bigdata.pe.gov.br/api/buscar")
 ```
@@ -201,7 +209,8 @@ bdpe_fetch_chunks(
 - `base_name`: The name of the dataset.
 - `total_limit`: Maximum number of records to fetch. Default is `Inf`
   (fetch all available data).
-- `chunk_size`: Number of records per chunk. Default is 50.000
+- `chunk_size`: Number of records per chunk. Default is `50000`; `Inf`
+  fetches everything in a single request.
 - `query`: Additional query parameters.
 - `endpoint`: The API endpoint URL.
 
@@ -224,7 +233,9 @@ all_data <- bdpe_fetch_chunks(
 
 ### 7. Construct URL with Query Parameters: `parse_queries`
 
-This internal function constructs a URL with query parameters.
+This helper constructs a URL with URL-encoded query parameters
+(`NULL`/`NA` values are dropped, and a vector value repeats the
+parameter). It is what the `query` argument of the fetch functions uses.
 
 ``` r
 parse_queries(url, query_list)
@@ -277,7 +288,7 @@ bdpe_remove_token("education_dataset")
 
 If you find any issues or have feature requests, feel free to create an
 issue or a pull request on
-[GitHub](https://github.com/StrategicProjects/bigdatape).
+[GitHub](https://github.com/StrategicProjects/BigDataPE).
 
 ------------------------------------------------------------------------
 

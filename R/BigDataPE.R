@@ -24,10 +24,13 @@
 #' Constructs a URL with query parameters
 #'
 #' This function appends a list of query parameters to a base URL. It is a thin
-#' re-export of [apifetch::parse_queries()].
+#' re-export of [apifetch::parse_queries()]. Names and values are URL-encoded;
+#' parameters whose value is `NULL`, `NA` or the empty string are dropped; a
+#' parameter with several values is repeated (`a=1&a=2`); and if `url` already
+#' has a query string, the new parameters are appended to it.
 #'
 #' @param url The base URL to which query parameters will be added.
-#' @param query_list A list of query parameters to be added to the URL.
+#' @param query_list A named list of query parameters to be added to the URL.
 #' @return The complete URL with the query parameters appended.
 #' @examples
 #' parse_queries("https://www.example.com", list(param1 = "value1", param2 = "value2"))
@@ -44,25 +47,33 @@ parse_queries <- function(url, query_list) {
 #' replacing spaces with underscores, and prefixing it with "BigDataPE_".
 #'
 #' If a variable with that name already exists (and is non-empty), the function
-#' will not overwrite it.
+#' will not overwrite it unless `overwrite = TRUE` (e.g. to replace an expired
+#' token).
 #'
 #' @param base_name The name of the dataset (character).
 #' @param token The authentication token for the dataset (character).
+#' @param overwrite Replace an existing token for this dataset? Default `FALSE`.
 #'
 #' @return No return value, called for side effects.
 #' @examples
 #' bdpe_store_token("education_dataset", "your-token-here")
 #'
+#' # Replace an expired token
+#' bdpe_store_token("education_dataset", "new-token", overwrite = TRUE)
+#'
+#' bdpe_remove_token("education_dataset")
+#'
 #' @export
-bdpe_store_token <- function(base_name, token) {
-  apifetch::af_store_token(base_name, token, service = "BigDataPE")
+bdpe_store_token <- function(base_name, token, overwrite = FALSE) {
+  apifetch::af_store_token(base_name, token, service = "BigDataPE",
+                           overwrite = overwrite)
 }
 
 #' Retrieve the token associated with a specific dataset
 #'
 #' This function retrieves the authentication token stored
 #' in an environment variable for a specific dataset. If the token is not found,
-#' it returns `NULL` and prints a message instead of throwing an error.
+#' it returns `NULL` and prints a warning message instead of throwing an error.
 #'
 #' @param base_name The name of the dataset (character).
 #'
@@ -129,7 +140,8 @@ bdpe_list_tokens <- function() {
 #'                  - `1`: Show progress messages (records fetched, totals).
 #'                  - `2`: Show progress messages **and** full HTTP request/response details.
 #'
-#' @return A tibble containing the data returned by the API.
+#' @return A tibble containing the data returned by the API, without the
+#'   API's `Mensagem` status column.
 #' @examples
 #' \dontrun{
 #' # Store a token for the dataset
@@ -152,25 +164,32 @@ bdpe_fetch_data <- function(
     query = list(),
     verbosity = 0L,
     endpoint = "https://www.bigdata.pe.gov.br/api/buscar") {
-  apifetch::af_fetch(
-    .bdpe_api(endpoint),
+  api <- .bdpe_api(endpoint)
+  out <- apifetch::af_fetch(
+    api,
     base_name,
     limit = limit,
     offset = offset,
     query = query,
     verbosity = verbosity
   )
+  # af_fetch() does not apply the profile's drop_cols (only af_fetch_all()
+  # does), so drop the status column here for a consistent result.
+  out[setdiff(names(out), api$drop_cols)]
 }
 
 #' Fetch data from the BigDataPE API in chunks
 #'
 #' This function retrieves data from the BigDataPE API iteratively in chunks.
-#' It uses `bdpe_fetch_data` as the base function and supports limits for the
-#' total number of records to fetch and the size of each chunk.
+#' It calls the API repeatedly with an advancing offset, stopping when a chunk
+#' comes back empty or `total_limit` is reached, and combines the chunks into a
+#' single tibble (dropping the API's `Mensagem` status column). If the API
+#' returns more rows than requested, the result is truncated to `total_limit`.
 #'
 #' @param base_name A string specifying the name of the dataset associated with the token.
 #' @param total_limit An integer specifying the maximum number of records to fetch. Default is Inf (all available data).
-#' @param chunk_size An integer specifying the number of records to fetch per chunk. Default is 500000
+#' @param chunk_size An integer specifying the number of records to fetch per chunk. Default is 50000;
+#'                   `Inf` requests everything in a single call.
 #' @param query A named list of additional query parameters to filter the API results. Default is an empty list.
 #' @param endpoint A string specifying the API endpoint URL. Default is "https://www.bigdata.pe.gov.br/api/buscar".
 #' @param verbosity An integer specifying the verbosity level.
@@ -194,7 +213,7 @@ bdpe_fetch_data <- function(
 bdpe_fetch_chunks <- function(
     base_name,
     total_limit = Inf,
-    chunk_size = 500000L,
+    chunk_size = 50000L,
     query = list(),
     verbosity = 0L,
     endpoint = "https://www.bigdata.pe.gov.br/api/buscar") {

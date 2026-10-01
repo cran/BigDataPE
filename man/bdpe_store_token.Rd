@@ -4,12 +4,14 @@
 \alias{bdpe_store_token}
 \title{Store a token in an environment variable for a specific dataset}
 \usage{
-bdpe_store_token(base_name, token)
+bdpe_store_token(base_name, token, overwrite = FALSE)
 }
 \arguments{
 \item{base_name}{The name of the dataset (character).}
 
 \item{token}{The authentication token for the dataset (character).}
+
+\item{overwrite}{Replace an existing token for this dataset? Default \code{FALSE}.}
 }
 \value{
 No return value, called for side effects.
@@ -22,9 +24,15 @@ replacing spaces with underscores, and prefixing it with "BigDataPE_".
 }
 \details{
 If a variable with that name already exists (and is non-empty), the function
-will not overwrite it.
+will not overwrite it unless \code{overwrite = TRUE} (e.g. to replace an expired
+token).
 }
 \examples{
 bdpe_store_token("education_dataset", "your-token-here")
+
+# Replace an expired token
+bdpe_store_token("education_dataset", "new-token", overwrite = TRUE)
+
+bdpe_remove_token("education_dataset")
 
 }

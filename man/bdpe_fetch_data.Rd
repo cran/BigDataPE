@@ -35,7 +35,8 @@ Values are:
 \item{endpoint}{A string specifying the API endpoint URL. Default is "https://www.bigdata.pe.gov.br/api/buscar".}
 }
 \value{
-A tibble containing the data returned by the API.
+A tibble containing the data returned by the API, without the
+API's \code{Mensagem} status column.
 }
 \description{
 This function retrieves data from the BigDataPE API using securely stored tokens associated with datasets.

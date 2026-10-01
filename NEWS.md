@@ -1,4 +1,33 @@
+# BigDataPE 0.3.0
+
+## Breaking changes
+
+- `bdpe_fetch_chunks()` now requests `chunk_size = 50000` records per chunk by
+  default (was `500000`), matching 'apifetch'. Very large chunks were prone to
+  timeouts and high memory use; pass `chunk_size = 500000` to restore the old
+  behaviour.
+- `bdpe_fetch_data()` now drops the API's `Mensagem` status column, as
+  `bdpe_fetch_chunks()` already did, so both functions return the same columns.
+
+## Other changes
+
+- Now requires 'apifetch' >= 0.2.0, which brings its bug fixes to every
+  `bdpe_*` function: `bdpe_fetch_chunks()` accepts `chunk_size = Inf` and never
+  returns more than `total_limit` rows; the `query` argument drops `NULL`/`NA`
+  values, repeats multi-valued parameters and works with an endpoint that
+  already has a query string; dataset names with accents map to the same
+  plain-ASCII token name on every platform (macOS used to produce names such as
+  `BigDataPE_Sa'ude`); and HTTP 401/403, empty and non-JSON responses give
+  clearer messages.
+- `bdpe_store_token()` gains `overwrite = FALSE`, to replace an expired token.
+  Previously the "already defined" warning suggested `overwrite = TRUE`, which
+  `bdpe_store_token()` did not accept.
+- Added a test suite (with mocked HTTP) for the Big Data PE service conventions.
+- Added authors' ORCID iDs and a `BugReports` field.
+
 # BigDataPE 0.2.0
+
+*Accepted on CRAN (2026-07-15).*
 
 ## Changes
 

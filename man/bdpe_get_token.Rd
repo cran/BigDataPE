@@ -15,7 +15,7 @@ A string containing the authentication token, or \code{NULL} if the token is not
 \description{
 This function retrieves the authentication token stored
 in an environment variable for a specific dataset. If the token is not found,
-it returns \code{NULL} and prints a message instead of throwing an error.
+it returns \code{NULL} and prints a warning message instead of throwing an error.
 }
 \examples{
 token <- bdpe_get_token("education_dataset")
